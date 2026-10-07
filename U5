@@ -1,0 +1,160 @@
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+pcall(function()
+    for _, v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("PostEffect") then
+            v:Destroy()
+        end
+    end
+
+    Lighting.ClockTime = 12
+    Lighting.Brightness = 1
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Ambient = Color3.fromRGB(120, 120, 120)
+    Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
+
+    local newSky = Instance.new("Sky")
+    newSky.Name = "CustomGraySky"
+    newSky.SkyboxBk = "rbxassetid://159454299"
+    newSky.SkyboxDn = "rbxassetid://159454299"
+    newSky.SkyboxFt = "rbxassetid://159454299"
+    newSky.SkyboxLf = "rbxassetid://159454299"
+    newSky.SkyboxRt = "rbxassetid://159454299"
+    newSky.SkyboxUp = "rbxassetid://159454299"
+    newSky.StarCount = 0
+    newSky.Parent = Lighting
+end)
+
+pcall(function()
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 0
+    end
+
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    workspace.LevelOfDetail = Enum.ModelLevelOfDetail.Disabled
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+            obj.CastShadow = false
+        elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+            obj:Destroy()
+        end
+    end
+
+    workspace.DescendantAdded:Connect(function(obj)
+        if obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+            obj.CastShadow = false
+        elseif obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+            pcall(function() obj:Destroy() end)
+        end
+    end)
+end)
+
+if CoreGui:FindFirstChild("SimpleFPS_MS") then
+    CoreGui.SimpleFPS_MS:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SimpleFPS_MS"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = CoreGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 170, 0, 45)
+mainFrame.Position = UDim2.new(0.5, -85, 0, 15)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = mainFrame
+
+local statsLabel = Instance.new("TextLabel")
+statsLabel.Size = UDim2.new(1, 0, 0, 22)
+statsLabel.Position = UDim2.new(0, 0, 0, 2)
+statsLabel.BackgroundTransparency = 1
+statsLabel.Font = Enum.Font.GothamBold
+statsLabel.TextSize = 13
+statsLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+statsLabel.TextXAlignment = Enum.TextXAlignment.Center
+statsLabel.TextStrokeTransparency = 0.5
+statsLabel.Parent = mainFrame
+
+local colorsContainer = Instance.new("Frame")
+colorsContainer.Size = UDim2.new(1, -20, 0, 14)
+colorsContainer.Position = UDim2.new(0, 10, 0, 26)
+colorsContainer.BackgroundTransparency = 1
+colorsContainer.Parent = mainFrame
+
+local paletteColors = {
+    Color3.fromRGB(0, 255, 100),
+    Color3.fromRGB(0, 150, 255),
+    Color3.fromRGB(255, 50, 50),
+    Color3.fromRGB(255, 255, 0),
+    Color3.fromRGB(255, 0, 255),
+    Color3.fromRGB(255, 255, 255)
+}
+
+local btnSize = 12
+local totalSpacing = (#paletteColors - 1) * 4
+local totalWidth = (#paletteColors * btnSize) + totalSpacing
+local startX = (mainFrame.AbsoluteSize.X - totalWidth) / 2
+
+for i, col in ipairs(paletteColors) do
+    local colorBtn = Instance.new("TextButton")
+    colorBtn.Size = UDim2.new(0, btnSize, 0, btnSize)
+    colorBtn.Position = UDim2.new(0, (i - 1) * (btnSize + 4), 0, 0)
+    colorBtn.BackgroundColor3 = col
+    colorBtn.AutoButtonColor = false
+    colorBtn.Text = ""
+    colorBtn.Parent = colorsContainer
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(1, 0)
+    btnCorner.Parent = colorBtn
+
+    colorBtn.MouseButton1Click:Connect(function()
+        statsLabel.TextColor3 = col
+    end)
+end
+
+local fps, lastUpdate = 0, tick()
+local frameCount = 0
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local currentTime = tick()
+    
+    if currentTime - lastUpdate >= 1 then
+        fps = math.floor(frameCount / (currentTime - lastUpdate))
+        frameCount = 0
+        lastUpdate = currentTime
+    end
+
+    local ping = 0
+    pcall(function()
+        ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    end)
+
+    statsLabel.Text = string.format("FPS: %d | MS: %d ms", fps, ping)
+end)
